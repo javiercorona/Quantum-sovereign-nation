@@ -1,0 +1,2447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Drone Swarm Orchestrator v10.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --quantum-blue: #00a8e8;
+            --dna-green: #00d1b2;
+            --swarm-orange: #ff7e33;
+            --error-red: #ff3860;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+        }
+        .sidebar {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            padding-top: 20px;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+        .nav-link {
+            color: rgba(255,255,255,.8);
+            margin-bottom: 5px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .nav-link:hover, .nav-link.active {
+            background-color: rgba(255,255,255,.1);
+            color: white;
+        }
+        .nav-link i {
+            margin-right: 10px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0,0,0,.05);
+            font-weight: 600;
+        }
+        .badge-quantum {
+            background-color: var(--quantum-blue);
+        }
+        .badge-dna {
+            background-color: var(--dna-green);
+        }
+        .badge-swarm {
+            background-color: var(--swarm-orange);
+        }
+        .dna-sequence {
+            font-family: monospace;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.9rem;
+        }
+        .base-a { color: #4CAF50; font-weight: bold; }
+        .base-t { color: #FF5722; font-weight: bold; }
+        .base-c { color: #2196F3; font-weight: bold; }
+        .base-g { color: #9C27B0; font-weight: bold; }
+        .telemetry-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        #dnaVisualization {
+            height: 300px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .progress-thin {
+            height: 5px;
+        }
+        .hover-effect:hover {
+            transform: translateY(-2px);
+            transition: all 0.2s;
+            box-shadow: 0 7px 14px rgba(0,0,0,0.1);
+        }
+        .connection-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .connection-active {
+            background-color: #28a745;
+        }
+        .connection-inactive {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="text-center mb-4">
+                    <h4><i class="bi bi-cpu"></i> Quantum Drone Swarm</h4>
+                    <small class="text-muted">v10.0 Enterprise</small>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#dashboard" data-bs-toggle="tab">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#dnaStorage" data-bs-toggle="tab">
+                            <i class="bi bi-dna"></i> DNA Storage
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#droneControl" data-bs-toggle="tab">
+                            <i class="bi bi-drone"></i> Drone Control
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#telemetry" data-bs-toggle="tab">
+                            <i class="bi bi-graph-up"></i> Telemetry
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#blockchain" data-bs-toggle="tab">
+                            <i class="bi bi-link-45deg"></i> Blockchain
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#settings" data-bs-toggle="tab">
+                            <i class="bi bi-gear"></i> Settings
+                        </a>
+                    </li>
+                </ul>
+                <div class="position-absolute bottom-0 start-0 p-3 w-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span id="connectionStatus" class="connection-status connection-active"></span>
+                            <small>Connected</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-light" id="connectWebSocket">
+                            <i class="bi bi-plug"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10 ms-sm-auto main-content">
+                <div class="tab-content">
+                    <!-- Dashboard Tab -->
+                    <div class="tab-pane fade show active" id="dashboard">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Swarm Dashboard</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="btn-group me-2">
+                                    <button class="btn btn-sm btn-outline-secondary" id="refreshDashboard">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card hover-effect">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="card-subtitle mb-2 text-muted">Active Drones</h6>
+                                                <h2 class="telemetry-value" id="activeDronesCount">0</h2>
+                                            </div>
+                                            <i class="bi bi-drone text-primary" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="progress progress-thin mt-2">
+                                            <div id="activeDronesProgress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card hover-effect">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="card-subtitle mb-2 text-muted">DNA Storage</h6>
+                                                <h2 class="telemetry-value" id="dnaStorageCount">0</h2>
+                                            </div>
+                                            <i class="bi bi-dna text-success" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="progress progress-thin mt-2">
+                                            <div id="dnaStorageProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card hover-effect">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="card-subtitle mb-2 text-muted">Blockchain Anchors</h6>
+                                                <h2 class="telemetry-value" id="blockchainCount">0</h2>
+                                            </div>
+                                            <i class="bi bi-link-45deg text-warning" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="progress progress-thin mt-2">
+                                            <div id="blockchainProgress" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-activity"></i> Swarm Health Status
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="swarmHealthChart" height="250"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-database"></i> Recent DNA Storage
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Drone ID</th>
+                                                        <th>Type</th>
+                                                        <th>Size</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="recentDnaStorage">
+                                                    <!-- Filled by JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-map"></i> Swarm Location Map
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="swarmMap" style="height: 400px; background-color: #f8f9fa; border-radius: 5px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DNA Storage Tab -->
+                    <div class="tab-pane fade" id="dnaStorage">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">DNA Storage Module</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="btn-group me-2">
+                                    <button class="btn btn-sm btn-outline-success" id="refreshDnaStorage">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-upload"></i> Encode Data to DNA
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="dnaEncodeForm">
+                                            <div class="mb-3">
+                                                <label for="encodeDroneId" class="form-label">Drone ID</label>
+                                                <select class="form-select" id="encodeDroneId" required>
+                                                    <option value="">Select a drone</option>
+                                                    <!-- Filled by JavaScript -->
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="storageType" class="form-label">Storage Type</label>
+                                                <select class="form-select" id="storageType" required>
+                                                    <option value="telemetry">Telemetry</option>
+                                                    <option value="keys">Encryption Keys</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="dnaData" class="form-label">Data to Encode</label>
+                                                <textarea class="form-control" id="dnaData" rows="5" placeholder='{"example": "data"}' required></textarea>
+                                                <div class="form-text">Enter valid JSON data</div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-dna"></i> Encode to DNA
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-download"></i> Decode DNA Data
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="dnaDecodeForm">
+                                            <div class="mb-3">
+                                                <label for="dnaCid" class="form-label">DNA CID</label>
+                                                <input type="text" class="form-control" id="dnaCid" placeholder="Qm..." required>
+                                            </div>
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="checkbox" id="verifyBlockchain" checked>
+                                                <label class="form-check-label" for="verifyBlockchain">
+                                                    Verify with blockchain
+                                                </label>
+                                            </div>
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="bi bi-code-square"></i> Decode DNA
+                                            </button>
+                                        </form>
+                                        <hr>
+                                        <div id="dnaDecodeResult" style="display: none;">
+                                            <h5>Decoded Data</h5>
+                                            <pre id="decodedData" class="bg-light p-3 rounded"></pre>
+                                            <div class="mt-3">
+                                                <h5>DNA Sequence</h5>
+                                                <div id="dnaSequenceDisplay" class="dna-sequence"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-bar-chart"></i> DNA Storage Analytics
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <canvas id="dnaStorageChart" height="250"></canvas>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h5>Storage Statistics</h5>
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Total Storage Operations
+                                                        <span class="badge bg-primary rounded-pill" id="totalStorageOps">0</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Average GC Content
+                                                        <span class="badge bg-success rounded-pill" id="avgGcContent">0%</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Average Sequence Length
+                                                        <span class="badge bg-info rounded-pill" id="avgSeqLength">0</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Blockchain Verified
+                                                        <span class="badge bg-warning rounded-pill" id="blockchainVerified">0%</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Drone Control Tab -->
+                    <div class="tab-pane fade" id="droneControl">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Drone Swarm Control</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="btn-group me-2">
+                                    <button class="btn btn-sm btn-outline-primary" id="refreshDroneList">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" id="connectAllDrones">
+                                        <i class="bi bi-plug"></i> Connect All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-list-ul"></i> Drone Fleet
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Status</th>
+                                                        <th>Model</th>
+                                                        <th>TPM</th>
+                                                        <th>SGX</th>
+                                                        <th>Last Seen</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="droneTableBody">
+                                                    <!-- Filled by JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-terminal"></i> Send Command
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="droneCommandForm">
+                                            <div class="mb-3">
+                                                <label for="commandDroneId" class="form-label">Drone ID</label>
+                                                <select class="form-select" id="commandDroneId" required>
+                                                    <option value="">Select a drone</option>
+                                                    <!-- Filled by JavaScript -->
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="commandType" class="form-label">Command Type</label>
+                                                <select class="form-select" id="commandType" required>
+                                                    <option value="move">Move To</option>
+                                                    <option value="scan">Scan Area</option>
+                                                    <option value="return">Return Home</option>
+                                                    <option value="update">Update Firmware</option>
+                                                    <option value="custom">Custom</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3" id="commandParamsContainer">
+                                                <label for="commandParams" class="form-label">Parameters (JSON)</label>
+                                                <textarea class="form-control" id="commandParams" rows="3" placeholder='{"x": 10, "y": 20}'></textarea>
+                                            </div>
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="checkbox" id="storeInDna" checked>
+                                                <label class="form-check-label" for="storeInDna">
+                                                    Store command in DNA
+                                                </label>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-send"></i> Send Command
+                                            </button>
+                                        </form>
+                                        <div id="commandResponse" class="mt-3 alert" style="display: none;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry Tab -->
+                    <div class="tab-pane fade" id="telemetry">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Real-time Telemetry</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="btn-group me-2">
+                                    <button class="btn btn-sm btn-outline-info" id="startTelemetry">
+                                        <i class="bi bi-play-circle"></i> Start Stream
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" id="stopTelemetry">
+                                        <i class="bi bi-stop-circle"></i> Stop
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-cpu"></i> Drone Selection
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="telemetryDroneId" class="form-label">Select Drone</label>
+                                            <select class="form-select" id="telemetryDroneId">
+                                                <option value="all">All Drones</option>
+                                                <!-- Filled by JavaScript -->
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="telemetryType" class="form-label">Telemetry Type</label>
+                                            <select class="form-select" id="telemetryType">
+                                                <option value="position">Position</option>
+                                                <option value="battery">Battery</option>
+                                                <option value="sensors">Sensors</option>
+                                                <option value="system">System</option>
+                                                <option value="all">All Data</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="storeTelemetryInDna" checked>
+                                            <label class="form-check-label" for="storeTelemetryInDna">
+                                                Store in DNA format
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-speedometer2"></i> Current Status
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <small class="text-muted">Battery Level</small>
+                                                    <div class="progress">
+                                                        <div id="batteryLevel" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <small class="text-muted">CPU Usage</small>
+                                                    <div class="progress">
+                                                        <div id="cpuUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <small class="text-muted">Signal Strength</small>
+                                                    <div class="progress">
+                                                        <div id="signalStrength" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <small class="text-muted">Memory Usage</small>
+                                                    <div class="progress">
+                                                        <div id="memoryUsage" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-3">
+                                            <div class="col-md-6">
+                                                <div class="card bg-light">
+                                                    <div class="card-body p-3">
+                                                        <h6 class="card-title">Position</h6>
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>Lat:</small>
+                                                            <span id="positionLat">0.0</span>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>Lon:</small>
+                                                            <span id="positionLon">0.0</span>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>Alt:</small>
+                                                            <span id="positionAlt">0.0m</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card bg-light">
+                                                    <div class="card-body p-3">
+                                                        <h6 class="card-title">Environment</h6>
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>Temp:</small>
+                                                            <span id="envTemp">0°C</span>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>Humidity:</small>
+                                                            <span id="envHumidity">0%</span>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>Pressure:</small>
+                                                            <span id="envPressure">0hPa</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-graph-up"></i> Telemetry Charts
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="nav nav-tabs" id="telemetryTabs" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="position-tab" data-bs-toggle="tab" data-bs-target="#position-tab-pane" type="button" role="tab">Position</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="battery-tab" data-bs-toggle="tab" data-bs-target="#battery-tab-pane" type="button" role="tab">Battery</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="sensors-tab" data-bs-toggle="tab" data-bs-target="#sensors-tab-pane" type="button" role="tab">Sensors</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system-tab-pane" type="button" role="tab">System</button>
+                                            </li>
+                                        </ul>
+                                        <div class="tab-content p-3 border border-top-0 rounded-bottom" id="telemetryTabContent">
+                                            <div class="tab-pane fade show active" id="position-tab-pane" role="tabpanel">
+                                                <canvas id="positionChart" height="250"></canvas>
+                                            </div>
+                                            <div class="tab-pane fade" id="battery-tab-pane" role="tabpanel">
+                                                <canvas id="batteryChart" height="250"></canvas>
+                                            </div>
+                                            <div class="tab-pane fade" id="sensors-tab-pane" role="tabpanel">
+                                                <canvas id="sensorsChart" height="250"></canvas>
+                                            </div>
+                                            <div class="tab-pane fade" id="system-tab-pane" role="tabpanel">
+                                                <canvas id="systemChart" height="250"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Blockchain Tab -->
+                    <div class="tab-pane fade" id="blockchain">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Blockchain Anchoring</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="btn-group me-2">
+                                    <button class="btn btn-sm btn-outline-primary" id="refreshBlockchain">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-blockchain"></i> Recent Transactions
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Tx Hash</th>
+                                                        <th>Drone ID</th>
+                                                        <th>Type</th>
+                                                        <th>Block</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="blockchainTransactions">
+                                                    <!-- Filled by JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-search"></i> Verify Data
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="verifyDataForm">
+                                            <div class="mb-3">
+                                                <label for="verifyCid" class="form-label">IPFS CID</label>
+                                                <input type="text" class="form-control" id="verifyCid" placeholder="Qm..." required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="verifyData" class="form-label">Data to Verify</label>
+                                                <textarea class="form-control" id="verifyData" rows="3" placeholder="Enter data to verify against blockchain"></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-shield-check"></i> Verify
+                                            </button>
+                                        </form>
+                                        <div id="verificationResult" class="mt-3 alert" style="display: none;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-graph-up"></i> Blockchain Analytics
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <canvas id="blockchainChart" height="250"></canvas>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h5>Network Stats</h5>
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Current Block
+                                                        <span class="badge bg-primary rounded-pill" id="currentBlock">0</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Gas Price
+                                                        <span class="badge bg-success rounded-pill" id="gasPrice">0</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Total Anchors
+                                                        <span class="badge bg-info rounded-pill" id="totalAnchors">0</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Last Anchor
+                                                        <span class="badge bg-warning rounded-pill" id="lastAnchor">-</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div class="tab-pane fade" id="settings">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">System Configuration</h1>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-gear"></i> Application Settings
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="appSettingsForm">
+                                            <div class="mb-3">
+                                                <label for="configDbUrl" class="form-label">Database URL</label>
+                                                <input type="text" class="form-control" id="configDbUrl" value="postgresql://user:pass@postgres:5432/drones" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="configPolygonRpc" class="form-label">Polygon RPC URL</label>
+                                                <input type="text" class="form-control" id="configPolygonRpc" value="https://polygon-rpc.com" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="configContractAddress" class="form-label">Contract Address</label>
+                                                <input type="text" class="form-control" id="configContractAddress" value="0x4d3D5c850Db5b6D6d5A1B7Bf982Ed5fA5F0D1B1e" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="configIpfsHost" class="form-label">IPFS Host</label>
+                                                <input type="text" class="form-control" id="configIpfsHost" value="ipfs.infura.io" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="configMaxDrones" class="form-label">Max Drones</label>
+                                                <input type="number" class="form-control" id="configMaxDrones" value="100" min="1" required>
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="configTpmRequired" checked>
+                                                <label class="form-check-label" for="configTpmRequired">
+                                                    TPM Attestation Required
+                                                </label>
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="configSgxRequired" checked>
+                                                <label class="form-check-label" for="configSgxRequired">
+                                                    SGX Attestation Required
+                                                </label>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-save"></i> Save Settings
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-shield-lock"></i> Security Settings
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="securitySettingsForm">
+                                            <div class="mb-3">
+                                                <label for="securityApiKey" class="form-label">API Key</label>
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control" id="securityApiKey" value="••••••••••••">
+                                                    <button class="btn btn-outline-secondary" type="button" id="showApiKey">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="securityJwtSecret" class="form-label">JWT Secret</label>
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control" id="securityJwtSecret" value="••••••••••••">
+                                                    <button class="btn btn-outline-secondary" type="button" id="showJwtSecret">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="securitySessionTimeout" class="form-label">Session Timeout (minutes)</label>
+                                                <input type="number" class="form-control" id="securitySessionTimeout" value="30" min="1">
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="securityRequire2fa" checked>
+                                                <label class="form-check-label" for="securityRequire2fa">
+                                                    Require 2FA for Admin
+                                                </label>
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" id="securityLogAllCommands" checked>
+                                                <label class="form-check-label" for="securityLogAllCommands">
+                                                    Log All Commands
+                                                </label>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-save"></i> Save Security Settings
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card hover-effect">
+                                    <div class="card-header">
+                                        <i class="bi bi-terminal"></i> System Logs
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-outline-secondary" id="refreshLogs">
+                                                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger" id="clearLogs">
+                                                    <i class="bi bi-trash"></i> Clear
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="systemLogs" style="height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
+                                            <!-- Logs will be appended here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DNA Visualization Modal -->
+    <div class="modal fade" id="dnaVisualizationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">DNA Sequence Visualization</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="dnaVisualization"></div>
+                    <div class="mt-3">
+                        <h6>Sequence Analysis</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <small class="text-muted">GC Content</small>
+                                    <div class="progress">
+                                        <div id="gcContentBar" class="progress-bar bg-success" role="progressbar" style="width: 50%"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <small class="text-muted">Base Distribution</small>
+                                    <div id="baseDistributionChart" style="height: 150px;"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <small class="text-muted">Biological Constraints</small>
+                                    <ul class="list-group">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Homopolymers
+                                            <span class="badge bg-primary rounded-pill" id="homopolymerCount">0</span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Prohibited Motifs
+                                            <span class="badge bg-danger rounded-pill" id="prohibitedMotifCount">0</span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Dinucleotide Repeats
+                                            <span class="badge bg-warning rounded-pill" id="dinucleotideRepeatCount">0</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="downloadDnaSequence">
+                        <i class="bi bi-download"></i> Download Sequence
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drone Details Modal -->
+    <div class="modal fade" id="droneDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Drone Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Identification</h6>
+                            <dl class="row">
+                                <dt class="col-sm-4">Drone ID</dt>
+                                <dd class="col-sm-8" id="detailDroneId">-</dd>
+                                
+                                <dt class="col-sm-4">Public Key</dt>
+                                <dd class="col-sm-8 text-truncate" id="detailPublicKey">-</dd>
+                                
+                                <dt class="col-sm-4">Model</dt>
+                                <dd class="col-sm-8" id="detailModel">-</dd>
+                                
+                                <dt class="col-sm-4">IPFS CID</dt>
+                                <dd class="col-sm-8" id="detailIpfsCid">-</dd>
+                            </dl>
+                            
+                            <h6 class="mt-4">Security</h6>
+                            <dl class="row">
+                                <dt class="col-sm-4">TPM Attested</dt>
+                                <dd class="col-sm-8" id="detailTpmAttested">-</dd>
+                                
+                                <dt class="col-sm-4">SGX Attested</dt>
+                                <dd class="col-sm-8" id="detailSgxAttested">-</dd>
+                                
+                                <dt class="col-sm-4">Last Attestation</dt>
+                                <dd class="col-sm-8" id="detailLastAttestation">-</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Status</h6>
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span>Connection Status</span>
+                                        <span class="badge bg-success" id="detailConnectionStatus">Active</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span>Last Seen</span>
+                                        <span id="detailLastSeen">-</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span>Uptime</span>
+                                        <span id="detailUptime">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h6 class="mt-4">Quick Actions</h6>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-sm btn-outline-primary" id="detailRefreshStatus">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh Status
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" id="detailRequestTelemetry">
+                                    <i class="bi bi-activity"></i> Request Telemetry
+                                </button>
+                                <button class="btn btn-sm btn-outline-info" id="detailViewDnaStorage">
+                                    <i class="bi bi-dna"></i> View DNA Storage
+                                </button>
+                                <button class="btn btn-sm btn-outline-warning" id="detailUpdateFirmware">
+                                    <i class="bi bi-upload"></i> Update Firmware
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6>Recent Telemetry</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Battery</th>
+                                        <th>Position</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailTelemetryTable">
+                                    <!-- Filled by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger" id="detailDisconnectDrone">
+                        <i class="bi bi-plug"></i> Disconnect
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Details Modal -->
+    <div class="modal fade" id="transactionDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Blockchain Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Transaction</h6>
+                            <dl class="row">
+                                <dt class="col-sm-4">Tx Hash</dt>
+                                <dd class="col-sm-8 text-truncate" id="txHash">-</dd>
+                                
+                                <dt class="col-sm-4">Block Number</dt>
+                                <dd class="col-sm-8" id="txBlockNumber">-</dd>
+                                
+                                <dt class="col-sm-4">Timestamp</dt>
+                                <dd class="col-sm-8" id="txTimestamp">-</dd>
+                                
+                                <dt class="col-sm-4">Status</dt>
+                                <dd class="col-sm-8" id="txStatus">-</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Content</h6>
+                            <dl class="row">
+                                <dt class="col-sm-4">Drone ID</dt>
+                                <dd class="col-sm-8" id="txDroneId">-</dd>
+                                
+                                <dt class="col-sm-4">IPFS CID</dt>
+                                <dd class="col-sm-8 text-truncate" id="txIpfsCid">-</dd>
+                                
+                                <dt class="col-sm-4">DNA Checksum</dt>
+                                <dd class="col-sm-8 text-truncate" id="txDnaChecksum">-</dd>
+                                
+                                <dt class="col-sm-4">Verified</dt>
+                                <dd class="col-sm-8" id="txVerified">-</dd>
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6>Transaction Data</h6>
+                        <pre id="txData" class="bg-light p-3 rounded"></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="viewOnPolygonScan">
+                        <i class="bi bi-box-arrow-up-right"></i> View on PolygonScan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+        // Global variables
+        let webSocket = null;
+        let droneMap = null;
+        let swarmHealthChart = null;
+        let dnaStorageChart = null;
+        let positionChart = null;
+        let batteryChart = null;
+        let sensorsChart = null;
+        let systemChart = null;
+        let blockchainChart = null;
+        let baseDistributionChart = null;
+        let telemetryStreamActive = false;
+        let currentTelemetryDrone = "all";
+        let currentTelemetryType = "position";
+        let drones = {};
+        let dnaStorageRecords = [];
+        let blockchainTransactions = [];
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            initializeMap();
+            loadInitialData();
+            setupEventListeners();
+            connectWebSocket();
+        });
+        
+        // Initialize all charts
+        function initializeCharts() {
+            // Swarm Health Chart
+            const swarmHealthCtx = document.getElementById('swarmHealthChart').getContext('2d');
+            swarmHealthChart = new Chart(swarmHealthCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Battery', 'Connectivity', 'CPU', 'Memory', 'Storage', 'Security'],
+                    datasets: [{
+                        label: 'Swarm Health',
+                        data: [85, 92, 78, 88, 95, 100],
+                        backgroundColor: 'rgba(0, 168, 232, 0.2)',
+                        borderColor: 'rgba(0, 168, 232, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(0, 168, 232, 1)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    }
+                }
+            });
+            
+            // DNA Storage Chart
+            const dnaStorageCtx = document.getElementById('dnaStorageChart').getContext('2d');
+            dnaStorageChart = new Chart(dnaStorageCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'DNA Storage Operations',
+                        data: [12, 19, 3, 5, 2, 3],
+                        backgroundColor: 'rgba(0, 209, 178, 0.7)',
+                        borderColor: 'rgba(0, 209, 178, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Position Chart
+            const positionCtx = document.getElementById('positionChart').getContext('2d');
+            positionChart = new Chart(positionCtx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill('').map((_, i) => i + 1),
+                    datasets: [{
+                        label: 'Latitude',
+                        data: Array(20).fill(0).map(() => Math.random() * 0.1 + 40.7),
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.1
+                    }, {
+                        label: 'Longitude',
+                        data: Array(20).fill(0).map(() => Math.random() * 0.1 - 74.0),
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Position History'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+            
+            // Battery Chart
+            const batteryCtx = document.getElementById('batteryChart').getContext('2d');
+            batteryChart = new Chart(batteryCtx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill('').map((_, i) => i + 1),
+                    datasets: [{
+                        label: 'Battery Level (%)',
+                        data: Array(20).fill(0).map((_, i) => Math.max(0, 100 - i * 5 + Math.random() * 10 - 5)),
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Battery History'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            
+            // Sensors Chart
+            const sensorsCtx = document.getElementById('sensorsChart').getContext('2d');
+            sensorsChart = new Chart(sensorsCtx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill('').map((_, i) => i + 1),
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: Array(20).fill(0).map(() => Math.random() * 10 + 20),
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.1,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Humidity (%)',
+                        data: Array(20).fill(0).map(() => Math.random() * 20 + 40),
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        tension: 0.1,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Sensor History'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Humidity (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // System Chart
+            const systemCtx = document.getElementById('systemChart').getContext('2d');
+            systemChart = new Chart(systemCtx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill('').map((_, i) => i + 1),
+                    datasets: [{
+                        label: 'CPU Usage (%)',
+                        data: Array(20).fill(0).map(() => Math.random() * 30 + 20),
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                        tension: 0.1
+                    }, {
+                        label: 'Memory Usage (%)',
+                        data: Array(20).fill(0).map(() => Math.random() * 20 + 30),
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'System Resource Usage'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            
+            // Blockchain Chart
+            const blockchainCtx = document.getElementById('blockchainChart').getContext('2d');
+            blockchainChart = new Chart(blockchainCtx, {
+                type: 'line',
+                data: {
+                    labels: Array(12).fill('').map((_, i) => {
+                        const date = new Date();
+                        date.setMonth(date.getMonth() - (11 - i));
+                        return date.toLocaleString('default', { month: 'short' });
+                    }),
+                    datasets: [{
+                        label: 'DNA Anchors',
+                        data: Array(12).fill(0).map(() => Math.floor(Math.random() * 50) + 10),
+                        borderColor: 'rgba(255, 126, 51, 1)',
+                        backgroundColor: 'rgba(255, 126, 51, 0.2)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Monthly Blockchain Anchors'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Base Distribution Chart (for DNA visualization)
+            baseDistributionChart = new ApexCharts(document.querySelector("#baseDistributionChart"), {
+                series: [{
+                    name: 'Bases',
+                    data: [25, 25, 25, 25]
+                }],
+                chart: {
+                    type: 'bar',
+                    height: 150,
+                    toolbar: {
+                        show: false
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        distributed: true,
+                        borderRadius: 4,
+                        horizontal: true,
+                    }
+                },
+                colors: ['#4CAF50', '#FF5722', '#2196F3', '#9C27B0'],
+                dataLabels: {
+                    enabled: false
+                },
+                xaxis: {
+                    categories: ['A', 'T', 'C', 'G'],
+                },
+                tooltip: {
+                    enabled: false
+                }
+            });
+            baseDistributionChart.render();
+        }
+        
+        // Initialize the map
+        function initializeMap() {
+            droneMap = L.map('swarmMap').setView([40.7128, -74.0060], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(droneMap);
+            
+            // Add some sample drone markers
+            for (let i = 0; i < 5; i++) {
+                const lat = 40.7128 + (Math.random() * 0.1 - 0.05);
+                const lng = -74.0060 + (Math.random() * 0.1 - 0.05);
+                const droneId = `DRONE-${1000 + i}`;
+                
+                const marker = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'drone-marker',
+                        html: `<div class="drone-icon"><i class="bi bi-drone"></i></div>`,
+                        iconSize: [30, 30]
+                    })
+                }).addTo(droneMap);
+                
+                marker.bindPopup(`<b>${droneId}</b><br>Status: Active<br>Battery: ${Math.floor(Math.random() * 50) + 50}%`);
+                
+                drones[droneId] = {
+                    marker: marker,
+                    lat: lat,
+                    lng: lng,
+                    status: 'active',
+                    battery: Math.floor(Math.random() * 50) + 50
+                };
+            }
+        }
+        
+        // Load initial data
+        function loadInitialData() {
+            // Simulate loading drones
+            setTimeout(() => {
+                const droneList = [
+                    { id: 'DRONE-1001', status: 'active', model: 'Quantum X1', tpm: true, sgx: true, lastSeen: new Date() },
+                    { id: 'DRONE-1002', status: 'active', model: 'Quantum X1', tpm: true, sgx: true, lastSeen: new Date(Date.now() - 60000) },
+                    { id: 'DRONE-1003', status: 'inactive', model: 'Quantum X2', tpm: true, sgx: false, lastSeen: new Date(Date.now() - 3600000) },
+                    { id: 'DRONE-1004', status: 'active', model: 'Quantum X2', tpm: false, sgx: true, lastSeen: new Date() },
+                    { id: 'DRONE-1005', status: 'maintenance', model: 'Quantum X1', tpm: true, sgx: true, lastSeen: new Date(Date.now() - 86400000) }
+                ];
+                
+                updateDroneTable(droneList);
+                updateDroneSelects(droneList);
+                
+                // Update dashboard counters
+                document.getElementById('activeDronesCount').textContent = droneList.filter(d => d.status === 'active').length;
+                document.getElementById('activeDronesProgress').style.width = 
+                    (droneList.filter(d => d.status === 'active').length / droneList.length * 100) + '%';
+                
+                // Simulate DNA storage records
+                const dnaRecords = [
+                    { droneId: 'DRONE-1001', type: 'telemetry', size: '1.2KB', status: 'verified', timestamp: new Date() },
+                    { droneId: 'DRONE-1002', type: 'keys', size: '0.8KB', status: 'verified', timestamp: new Date(Date.now() - 120000) },
+                    { droneId: 'DRONE-1001', type: 'telemetry', size: '1.1KB', status: 'pending', timestamp: new Date(Date.now() - 300000) },
+                    { droneId: 'DRONE-1004', type: 'telemetry', size: '1.5KB', status: 'verified', timestamp: new Date(Date.now() - 1800000) }
+                ];
+                
+                updateRecentDnaStorage(dnaRecords);
+                document.getElementById('dnaStorageCount').textContent = dnaRecords.length;
+                document.getElementById('dnaStorageProgress').style.width = '100%';
+                
+                // Simulate blockchain transactions
+                const blockchainTxs = [
+                    { txHash: '0x4d3D5c850Db5b6D6d5A1B7Bf982Ed5fA5F0D1B1e', droneId: 'DRONE-1001', type: 'DNA_STORAGE', block: 12345678 },
+                    { txHash: '0x5e2D6c951Db5b6D6d5A1B7Bf982Ed5fA5F0D1B2f', droneId: 'DRONE-1002', type: 'DNA_STORAGE', block: 12345677 },
+                    { txHash: '0x6f3E7d862Db5b6D6d5A1B7Bf982Ed5fA5F0D1B3g', droneId: 'DRONE-1001', type: 'COMMAND', block: 12345676 },
+                    { txHash: '0x7g4F8e973Db5b6D6d5A1B7Bf982Ed5fA5F0D1B4h', droneId: 'DRONE-1004', type: 'DNA_STORAGE', block: 12345675 }
+                ];
+                
+                updateBlockchainTransactions(blockchainTxs);
+                document.getElementById('blockchainCount').textContent = blockchainTxs.length;
+                document.getElementById('blockchainProgress').style.width = '100%';
+                
+                // Update stats
+                document.getElementById('totalStorageOps').textContent = dnaRecords.length;
+                document.getElementById('avgGcContent').textContent = '52%';
+                document.getElementById('avgSeqLength').textContent = '1,240';
+                document.getElementById('blockchainVerified').textContent = '75%';
+                document.getElementById('currentBlock').textContent = '12,345,678';
+                document.getElementById('gasPrice').textContent = '45 gwei';
+                document.getElementById('totalAnchors').textContent = blockchainTxs.length;
+                document.getElementById('lastAnchor').textContent = '2 mins ago';
+                
+                // Add some system logs
+                addSystemLog('System initialized successfully');
+                addSystemLog('Connected to 5 drones');
+                addSystemLog('DNA Storage module ready');
+                addSystemLog('Blockchain connection established');
+                
+            }, 1000);
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Refresh buttons
+            document.getElementById('refreshDashboard').addEventListener('click', loadInitialData);
+            document.getElementById('refreshDnaStorage').addEventListener('click', () => {
+                addSystemLog('Refreshing DNA storage data');
+                // In a real app, this would fetch fresh data from the server
+            });
+            document.getElementById('refreshDroneList').addEventListener('click', () => {
+                addSystemLog('Refreshing drone list');
+                // In a real app, this would fetch fresh data from the server
+            });
+            document.getElementById('refreshBlockchain').addEventListener('click', () => {
+                addSystemLog('Refreshing blockchain data');
+                // In a real app, this would fetch fresh data from the server
+            });
+            document.getElementById('refreshLogs').addEventListener('click', () => {
+                addSystemLog('Logs refreshed');
+            });
+            
+            // Connect WebSocket button
+            document.getElementById('connectWebSocket').addEventListener('click', () => {
+                if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+                    webSocket.close();
+                } else {
+                    connectWebSocket();
+                }
+            });
+            
+            // Connect All Drones button
+            document.getElementById('connectAllDrones').addEventListener('click', () => {
+                addSystemLog('Attempting to connect all drones...');
+                // In a real app, this would send a command to all drones
+            });
+            
+            // Telemetry controls
+            document.getElementById('startTelemetry').addEventListener('click', () => {
+                telemetryStreamActive = true;
+                addSystemLog('Starting telemetry stream');
+                simulateTelemetry();
+            });
+            
+            document.getElementById('stopTelemetry').addEventListener('click', () => {
+                telemetryStreamActive = false;
+                addSystemLog('Stopped telemetry stream');
+            });
+            
+            document.getElementById('telemetryDroneId').addEventListener('change', (e) => {
+                currentTelemetryDrone = e.target.value;
+                addSystemLog(`Telemetry focus changed to ${currentTelemetryDrone}`);
+            });
+            
+            document.getElementById('telemetryType').addEventListener('change', (e) => {
+                currentTelemetryType = e.target.value;
+                addSystemLog(`Telemetry type changed to ${currentTelemetryType}`);
+            });
+            
+            // DNA encode form
+            document.getElementById('dnaEncodeForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const droneId = document.getElementById('encodeDroneId').value;
+                const storageType = document.getElementById('storageType').value;
+                const dataText = document.getElementById('dnaData').value;
+                
+                try {
+                    const data = JSON.parse(dataText);
+                    addSystemLog(`Encoding data to DNA for drone ${droneId}`);
+                    
+                    // Simulate DNA encoding
+                    setTimeout(() => {
+                        const cid = 'Qm' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                        const txHash = '0x' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                        
+                        // Add to recent storage
+                        const dnaRecordsTable = document.getElementById('recentDnaStorage');
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = `
+                            <td>${droneId}</td>
+                            <td>${storageType}</td>
+                            <td>${(JSON.stringify(data).length / 1024).toFixed(1)}KB</td>
+                            <td><span class="badge bg-success">stored</span></td>
+                        `;
+                        dnaRecordsTable.prepend(newRow);
+                        
+                        // Show success message
+                        addSystemLog(`DNA storage successful. CID: ${cid}, Tx: ${txHash}`);
+                        
+                        // Update counters
+                        const currentCount = parseInt(document.getElementById('dnaStorageCount').textContent);
+                        document.getElementById('dnaStorageCount').textContent = currentCount + 1;
+                        document.getElementById('dnaStorageProgress').style.width = 
+                            ((currentCount + 1) / 100 * 100) + '%';
+                            
+                        const currentBlockchainCount = parseInt(document.getElementById('blockchainCount').textContent);
+                        document.getElementById('blockchainCount').textContent = currentBlockchainCount + 1;
+                        document.getElementById('blockchainProgress').style.width = 
+                            ((currentBlockchainCount + 1) / 100 * 100) + '%';
+                    }, 1500);
+                } catch (e) {
+                    addSystemLog(`DNA encoding failed: Invalid JSON data`, 'error');
+                }
+            });
+            
+            // DNA decode form
+            document.getElementById('dnaDecodeForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const cid = document.getElementById('dnaCid').value;
+                const verify = document.getElementById('verifyBlockchain').checked;
+                
+                addSystemLog(`Decoding DNA data from CID: ${cid} ${verify ? 'with' : 'without'} blockchain verification`);
+                
+                // Simulate DNA decoding
+                setTimeout(() => {
+                    const decodedData = {
+                        droneId: 'DRONE-1001',
+                        timestamp: new Date().toISOString(),
+                        telemetry: {
+                            battery: 78.5,
+                            position: {
+                                lat: 40.7128,
+                                lng: -74.0060,
+                                alt: 120.5
+                            },
+                            sensors: {
+                                temp: 23.4,
+                                humidity: 45.6,
+                                pressure: 1013.2
+                            }
+                        }
+                    };
+                    
+                    document.getElementById('decodedData').textContent = JSON.stringify(decodedData, null, 2);
+                    
+                    // Generate a sample DNA sequence
+                    const dnaSequence = generateDnaSequence(120);
+                    const dnaDisplay = document.getElementById('dnaSequenceDisplay');
+                    dnaDisplay.innerHTML = '';
+                    
+                    for (const base of dnaSequence) {
+                        const span = document.createElement('span');
+                        span.textContent = base;
+                        span.className = `base-${base.toLowerCase()}`;
+                        dnaDisplay.appendChild(span);
+                    }
+                    
+                    document.getElementById('dnaDecodeResult').style.display = 'block';
+                    
+                    // Update DNA visualization stats
+                    document.getElementById('gcContentBar').style.width = '52%';
+                    document.getElementById('homopolymerCount').textContent = '2';
+                    document.getElementById('prohibitedMotifCount').textContent = '0';
+                    document.getElementById('dinucleotideRepeatCount').textContent = '1';
+                    
+                    baseDistributionChart.updateSeries([{
+                        name: 'Bases',
+                        data: [28, 24, 27, 21]
+                    }]);
+                    
+                    addSystemLog(`DNA decoding successful for CID: ${cid}`);
+                }, 1500);
+            });
+            
+            // Drone command form
+            document.getElementById('droneCommandForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const droneId = document.getElementById('commandDroneId').value;
+                const commandType = document.getElementById('commandType').value;
+                const commandParams = document.getElementById('commandParams').value;
+                const storeInDna = document.getElementById('storeInDna').checked;
+                
+                addSystemLog(`Sending ${commandType} command to ${droneId} ${storeInDna ? 'with DNA storage' : ''}`);
+                
+                // Simulate command response
+                setTimeout(() => {
+                    const responseDiv = document.getElementById('commandResponse');
+                    responseDiv.style.display = 'block';
+                    responseDiv.className = 'alert alert-success';
+                    responseDiv.innerHTML = `
+                        <i class="bi bi-check-circle"></i> Command successfully sent to ${droneId}.
+                        ${storeInDna ? '<br>Command anchored to blockchain with DNA storage.' : ''}
+                    `;
+                    
+                    // If storing in DNA, update counters
+                    if (storeInDna) {
+                        const currentDnaCount = parseInt(document.getElementById('dnaStorageCount').textContent);
+                        document.getElementById('dnaStorageCount').textContent = currentDnaCount + 1;
+                        document.getElementById('dnaStorageProgress').style.width = 
+                            ((currentDnaCount + 1) / 100 * 100) + '%';
+                            
+                        const currentBlockchainCount = parseInt(document.getElementById('blockchainCount').textContent);
+                        document.getElementById('blockchainCount').textContent = currentBlockchainCount + 1;
+                        document.getElementById('blockchainProgress').style.width = 
+                            ((currentBlockchainCount + 1) / 100 * 100) + '%';
+                    }
+                }, 1000);
+            });
+            
+            // Command type change
+            document.getElementById('commandType').addEventListener('change', (e) => {
+                const paramsContainer = document.getElementById('commandParamsContainer');
+                const commandType = e.target.value;
+                
+                if (commandType === 'move') {
+                    document.getElementById('commandParams').value = '{"x": 0, "y": 0, "z": 0}';
+                } else if (commandType === 'scan') {
+                    document.getElementById('commandParams').value = '{"radius": 50, "resolution": "high"}';
+                } else if (commandType === 'return') {
+                    document.getElementById('commandParams').value = '{}';
+                } else if (commandType === 'update') {
+                    document.getElementById('commandParams').value = '{"version": "1.2.3", "url": "https://example.com/firmware.bin"}';
+                } else {
+                    document.getElementById('commandParams').value = '';
+                }
+            });
+            
+            // Verify data form
+            document.getElementById('verifyDataForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const cid = document.getElementById('verifyCid').value;
+                const data = document.getElementById('verifyData').value;
+                
+                addSystemLog(`Verifying data for CID: ${cid}`);
+                
+                // Simulate verification
+                setTimeout(() => {
+                    const resultDiv = document.getElementById('verificationResult');
+                    resultDiv.style.display = 'block';
+                    
+                    // Randomly pass or fail for demo
+                    if (Math.random() > 0.3) {
+                        resultDiv.className = 'alert alert-success';
+                        resultDiv.innerHTML = `
+                            <i class="bi bi-check-circle"></i> Verification successful!<br>
+                            The data matches the blockchain record for CID ${cid}.
+                        `;
+                    } else {
+                        resultDiv.className = 'alert alert-danger';
+                        resultDiv.innerHTML = `
+                            <i class="bi bi-exclamation-triangle"></i> Verification failed!<br>
+                            The data does not match the blockchain record for CID ${cid}.
+                        `;
+                    }
+                }, 1500);
+            });
+            
+            // Settings forms
+            document.getElementById('appSettingsForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                addSystemLog('Application settings saved');
+                // In a real app, this would send to the server
+            });
+            
+            document.getElementById('securitySettingsForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                addSystemLog('Security settings saved');
+                // In a real app, this would send to the server
+            });
+            
+            // Show/hide secrets
+            document.getElementById('showApiKey').addEventListener('click', (e) => {
+                const input = document.getElementById('securityApiKey');
+                input.type = input.type === 'password' ? 'text' : 'password';
+                e.target.innerHTML = input.type === 'password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+            });
+            
+            document.getElementById('showJwtSecret').addEventListener('click', (e) => {
+                const input = document.getElementById('securityJwtSecret');
+                input.type = input.type === 'password' ? 'text' : 'password';
+                e.target.innerHTML = input.type === 'password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+            });
+            
+            // Clear logs
+            document.getElementById('clearLogs').addEventListener('click', () => {
+                document.getElementById('systemLogs').innerHTML = '';
+                addSystemLog('Logs cleared');
+            });
+            
+            // DNA sequence download
+            document.getElementById('downloadDnaSequence').addEventListener('click', () => {
+                const dnaSequence = document.getElementById('dnaSequenceDisplay').textContent;
+                const blob = new Blob([dnaSequence], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'dna-sequence.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                addSystemLog('DNA sequence downloaded');
+            });
+        }
+        
+        // Connect to WebSocket
+        function connectWebSocket() {
+            if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+                return;
+            }
+            
+            // In a real app, this would connect to your WebSocket endpoint
+            // For demo purposes, we'll simulate a connection
+            const statusIndicator = document.getElementById('connectionStatus');
+            const connectButton = document.getElementById('connectWebSocket');
+            
+            statusIndicator.className = 'connection-status connection-inactive';
+            connectButton.disabled = true;
+            connectButton.innerHTML = '<i class="bi bi-plug-fill"></i>';
+            
+            addSystemLog('Connecting to WebSocket server...');
+            
+            setTimeout(() => {
+                statusIndicator.className = 'connection-status connection-active';
+                connectButton.disabled = false;
+                connectButton.innerHTML = '<i class="bi bi-plug"></i>';
+                addSystemLog('WebSocket connection established');
+                
+                // Simulate receiving WebSocket messages
+                setInterval(() => {
+                    if (Math.random() > 0.7) {
+                        const droneId = `DRONE-${1000 + Math.floor(Math.random() * 5)}`;
+                        const eventTypes = ['telemetry', 'status_update', 'alert'];
+                        const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+                        
+                        let message;
+                        if (eventType === 'telemetry') {
+                            message = {
+                                type: 'telemetry',
+                                droneId: droneId,
+                                data: {
+                                    battery: Math.floor(Math.random() * 30) + 70,
+                                    position: {
+                                        lat: 40.7128 + (Math.random() * 0.02 - 0.01),
+                                        lng: -74.0060 + (Math.random() * 0.02 - 0.01),
+                                        alt: 100 + Math.random() * 50
+                                    },
+                                    sensors: {
+                                        temp: 20 + Math.random() * 10,
+                                        humidity: 40 + Math.random() * 30,
+                                        pressure: 1000 + Math.random() * 20
+                                    },
+                                    system: {
+                                        cpu: 20 + Math.random() * 30,
+                                        memory: 30 + Math.random() * 40,
+                                        storage: 50 + Math.random() * 30
+                                    }
+                                }
+                            };
+                        } else if (eventType === 'status_update') {
+                            const statuses = ['active', 'inactive', 'maintenance', 'error'];
+                            message = {
+                                type: 'status_update',
+                                droneId: droneId,
+                                status: statuses[Math.floor(Math.random() * statuses.length)]
+                            };
+                        } else {
+                            const alerts = ['Low battery', 'GPS signal lost', 'Motor fault', 'Obstacle detected'];
+                            message = {
+                                type: 'alert',
+                                droneId: droneId,
+                                alert: alerts[Math.floor(Math.random() * alerts.length)],
+                                severity: ['warning', 'error'][Math.floor(Math.random() * 2)]
+                            };
+                        }
+                        
+                        handleWebSocketMessage(message);
+                    }
+                }, 3000);
+            }, 1500);
+        }
+        
+        // Handle WebSocket messages
+        function handleWebSocketMessage(message) {
+            if (message.type === 'telemetry') {
+                // Update drone position on map
+                if (drones[message.droneId]) {
+                    const newLat = message.data.position.lat;
+                    const newLng = message.data.position.lng;
+                    
+                    drones[message.droneId].marker.setLatLng([newLat, newLng]);
+                    drones[message.droneId].marker.getPopup().setContent(`
+                        <b>${message.droneId}</b><br>
+                        Status: Active<br>
+                        Battery: ${Math.round(message.data.battery)}%<br>
+                        Position: ${newLat.toFixed(6)}, ${newLng.toFixed(6)}
+                    `);
+                    
+                    drones[message.droneId].lat = newLat;
+                    drones[message.droneId].lng = newLng;
+                    drones[message.droneId].battery = message.data.battery;
+                }
+                
+                // If telemetry stream is active and this is the selected drone (or all drones)
+                if (telemetryStreamActive && 
+                    (currentTelemetryDrone === 'all' || currentTelemetryDrone === message.droneId)) {
+                    updateTelemetryDisplays(message.data);
+                }
+                
+                addSystemLog(`Telemetry update from ${message.droneId}`);
+            } else if (message.type === 'status_update') {
+                // Update drone status in the table
+                const rows = document.getElementById('droneTableBody').rows;
+                for (let i = 0; i < rows.length; i++) {
+                    if (rows[i].cells[0].textContent === message.droneId) {
+                        const statusCell = rows[i].cells[1];
+                        
+                        // Remove all status classes
+                        statusCell.className = '';
+                        
+                        // Add new status class
+                        if (message.status === 'active') {
+                            statusCell.innerHTML = '<span class="badge bg-success">Active</span>';
+                        } else if (message.status === 'inactive') {
+                            statusCell.innerHTML = '<span class="badge bg-secondary">Inactive</span>';
+                        } else if (message.status === 'maintenance') {
+                            statusCell.innerHTML = '<span class="badge bg-warning">Maintenance</span>';
+                        } else {
+                            statusCell.innerHTML = '<span class="badge bg-danger">Error</span>';
+                        }
+                        
+                        break;
+                    }
+                }
+                
+                addSystemLog(`Status update: ${message.droneId} is now ${message.status}`);
+            } else if (message.type === 'alert') {
+                addSystemLog(`ALERT from ${message.droneId}: ${message.alert}`, 'error');
+                
+                // Show alert to user
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${message.severity === 'warning' ? 'warning' : 'danger'} alert-dismissible fade show`;
+                alertDiv.innerHTML = `
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    <strong>${message.droneId}</strong>: ${message.alert}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                // Add to the top of the main content
+                const mainContent = document.querySelector('.main-content');
+                mainContent.insertBefore(alertDiv, mainContent.firstChild);
+            }
+        }
+        
+        // Update telemetry displays
+        function updateTelemetryDisplays(data) {
+            // Update progress bars
+            document.getElementById('batteryLevel').style.width = `${data.battery}%`;
+            document.getElementById('cpuUsage').style.width = `${data.system.cpu}%`;
+            document.getElementById('memoryUsage').style.width = `${data.system.memory}%`;
+            document.getElementById('signalStrength').style.width = `${100 - (data.system.cpu / 2 + data.system.memory / 2)}%`;
+            
+            // Update position displays
+            document.getElementById('positionLat').textContent = data.position.lat.toFixed(6);
+            document.getElementById('positionLon').textContent = data.position.lng.toFixed(6);
+            document.getElementById('positionAlt').textContent = `${data.position.alt.toFixed(1)}m`;
+            
+            // Update environment displays
+            document.getElementById('envTemp').textContent = `${data.sensors.temp.toFixed(1)}°C`;
+            document.getElementById('envHumidity').textContent = `${data.sensors.humidity.toFixed(1)}%`;
+            document.getElementById('envPressure').textContent = `${data.sensors.pressure.toFixed(1)}hPa`;
+            
+            // Update charts
+            updateTelemetryCharts(data);
+        }
+        
+        // Update telemetry charts
+        function updateTelemetryCharts(data) {
+            // Position chart
+            const positionData = positionChart.data.datasets[0].data;
+            positionData.shift();
+            positionData.push(data.position.lat);
+            
+            const positionData2 = positionChart.data.datasets[1].data;
+            positionData2.shift();
+            positionData2.push(data.position.lng);
+            
+            positionChart.update();
+            
+            // Battery chart
+            const batteryData = batteryChart.data.datasets[0].data;
+            batteryData.shift();
+            batteryData.push(data.battery);
+            batteryChart.update();
+            
+            // Sensors chart
+            const tempData = sensorsChart.data.datasets[0].data;
+            tempData.shift();
+            tempData.push(data.sensors.temp);
+            
+            const humidityData = sensorsChart.data.datasets[1].data;
+            humidityData.shift();
+            humidityData.push(data.sensors.humidity);
+            
+            sensorsChart.update();
+            
+            // System chart
+            const cpuData = systemChart.data.datasets[0].data;
+            cpuData.shift();
+            cpuData.push(data.system.cpu);
+            
+            const memoryData = systemChart.data.datasets[1].data;
+            memoryData.shift();
+            memoryData.push(data.system.memory);
+            
+            systemChart.update();
+        }
+        
+        // Simulate telemetry updates
+        function simulateTelemetry() {
+            if (!telemetryStreamActive) return;
+            
+            const droneId = currentTelemetryDrone === 'all' ? 
+                `DRONE-${1001 + Math.floor(Math.random() * 5)}` : currentTelemetryDrone;
+                
+            const message = {
+                type: 'telemetry',
+                droneId: droneId,
+                data: {
+                    battery: Math.max(0, Math.min(100, (Math.random() * 10 - 5) + 
+                        (drones[droneId] ? drones[droneId].battery : 70))),
+                    position: {
+                        lat: 40.7128 + (Math.random() * 0.002 - 0.001),
+                        lng: -74.0060 + (Math.random() * 0.002 - 0.001),
+                        alt: 100 + Math.random() * 20
+                    },
+                    sensors: {
+                        temp: 20 + Math.random() * 5,
+                        humidity: 40 + Math.random() * 20,
+                        pressure: 1000 + Math.random() * 10
+                    },
+                    system: {
+                        cpu: 20 + Math.random() * 30,
+                        memory: 30 + Math.random() * 40,
+                        storage: 50 + Math.random() * 30
+                    }
+                }
+            };
+            
+            handleWebSocketMessage(message);
+            
+            if (telemetryStreamActive) {
+                setTimeout(simulateTelemetry, 1000);
+            }
+        }
+        
+        // Update drone table
+        function updateDroneTable(droneList) {
+            const tableBody = document.getElementById('droneTableBody');
+            tableBody.innerHTML = '';
+            
+            droneList.forEach(drone => {
+                const row = document.createElement('tr');
+                
+                // Status badge
+                let statusBadge;
+                if (drone.status === 'active') {
+                    statusBadge = '<span class="badge bg-success">Active</span>';
+                } else if (drone.status === 'inactive') {
+                    statusBadge = '<span class="badge bg-secondary">Inactive</span>';
+                } else if (drone.status === 'maintenance') {
+                    statusBadge = '<span class="badge bg-warning">Maintenance</span>';
+                } else {
+                    statusBadge = '<span class="badge bg-danger">Error</span>';
+                }
+                
+                // TPM/SGX badges
+                const tpmBadge = drone.tpm ? '<span class="badge bg-success"><i class="bi bi-shield-check"></i></span>' : 
+                    '<span class="badge bg-secondary"><i class="bi bi-shield"></i></span>';
+                const sgxBadge = drone.sgx ? '<span class="badge bg-success"><i class="bi bi-shield-check"></i></span>' : 
+                    '<span class="badge bg-secondary"><i class="bi bi-shield"></i></span>';
+                
+                row.innerHTML = `
+                    <td>${drone.id}</td>
+                    <td>${statusBadge}</td>
+                    <td>${drone.model}</td>
+                    <td>${tpmBadge}</td>
+                    <td>${sgxBadge}</td>
+                    <td>${formatTime(drone.lastSeen)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary view-drone" data-drone-id="${drone.id}">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Add event listeners to view buttons
+            document.querySelectorAll('.view-drone').forEach(button => {
+                button.addEventListener('click', () => {
+                    const droneId = button.getAttribute('data-drone-id');
+                    showDroneDetails(droneId);
+                });
+            });
+        }
+        
+        // Update drone selects in all forms
+        function updateDroneSelects(droneList) {
+            const selects = [
+                document.getElementById('encodeDroneId'),
+                document.getElementById('commandDroneId'),
+                document.getElementById('telemetryDroneId')
+            ];
+            
+            selects.forEach(select => {
+                // Save current value
+                const currentValue = select.value;
+                
+                // Clear options except the first one
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+                
+                // Add drone options
+                droneList.forEach(drone => {
+                    const option = document.createElement('option');
+                    option.value = drone.id;
+                    option.textContent = drone.id;
+                    select.appendChild(option);
+                });
+                
+                // Restore current value if it still exists
+                if (droneList.some(d => d.id === currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+        }
+        
+        // Update recent DNA storage table
+        function updateRecentDnaStorage(records) {
+            const tableBody = document.getElementById('recentDnaStorage');
+            tableBody.innerHTML = '';
+            
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                
+                let statusBadge;
+                if (record.status === 'verified') {
+                    statusBadge = '<span class="badge bg-success">Verified</span>';
+                } else if (record.status === 'pending') {
+                    statusBadge = '<span class="badge bg-warning">Pending</span>';
+                } else {
+                    statusBadge = '<span class="badge bg-danger">Error</span>';
+                }
+                
+                row.innerHTML = `
+                    <td>${record.droneId}</td>
+                    <td>${record.type}</td>
+                    <td>${record.size}</td>
+                    <td>${statusBadge}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Update blockchain transactions table
+        function updateBlockchainTransactions(transactions) {
+            const tableBody = document.getElementById('blockchainTransactions');
+            tableBody.innerHTML = '';
+            
+            transactions.forEach(tx => {
+                const row = document.createElement('tr');
+                row.className = 'tx-row';
+                row.setAttribute('data-tx-hash', tx.txHash);
+                
+                row.innerHTML = `
+                    <td class="text-truncate" style="max-width: 120px;">${tx.txHash}</td>
+                    <td>${tx.droneId}</td>
+                    <td>${tx.type}</td>
+                    <td>${tx.block}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Add click event to view transaction details
+            document.querySelectorAll('.tx-row').forEach(row => {
+                row.addEventListener('click', () => {
+                    const txHash = row.getAttribute('data-tx-hash');
+                    showTransactionDetails(txHash);
+                });
+            });
+        }
+        
+        // Show drone details modal
+        function showDroneDetails(droneId) {
+            // In a real app, this would fetch details from the server
+            // For demo, we'll use sample data
+            const drone = {
+                id: droneId,
+                publicKey: '0x' + Math.random().toString(16).substring(2, 42),
+                model: droneId.endsWith('1') || droneId.endsWith('2') ? 'Quantum X1' : 'Quantum X2',
+                ipfsCid: 'Qm' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+                tpmAttested: Math.random() > 0.3,
+                sgxAttested: Math.random() > 0.3,
+                lastAttestation: new Date(Date.now() - Math.random() * 86400000),
+                connectionStatus: Math.random() > 0.2 ? 'active' : 'inactive',
+                lastSeen: new Date(),
+                uptime: Math.floor(Math.random() * 86400)
+            };
+            
+            // Fill modal with data
+            document.getElementById('detailDroneId').textContent = drone.id;
+            document.getElementById('detailPublicKey').textContent = drone.publicKey;
+            document.getElementById('detailModel').textContent = drone.model;
+            document.getElementById('detailIpfsCid').textContent = drone.ipfsCid;
+            document.getElementById('detailTpmAttested').textContent = drone.tpmAttested ? 'Yes' : 'No';
+            document.getElementById('detailSgxAttested').textContent = drone.sgxAttested ? 'Yes' : 'No';
+            document.getElementById('detailLastAttestation').textContent = formatTime(drone.lastAttestation);
+            document.getElementById('detailConnectionStatus').textContent = drone.connectionStatus === 'active' ? 'Active' : 'Inactive';
+            document.getElementById('detailConnectionStatus').className = drone.connectionStatus === 'active' ? 'badge bg-success' : 'badge bg-secondary';
+            document.getElementById('detailLastSeen').textContent = formatTime(drone.lastSeen);
+            document.getElementById('detailUptime').textContent = formatDuration(drone.uptime);
+            
+            // Add sample telemetry data
+            const telemetryTable = document.getElementById('detailTelemetryTable');
+            telemetryTable.innerHTML = '';
+            
+            for (let i = 0; i < 5; i++) {
+                const row = document.createElement('tr');
+                const timestamp = new Date(Date.now() - i * 60000);
+                const battery = Math.max(10, Math.floor(100 - i * 5 + Math.random() * 10 - 5));
+                const lat = 40.7128 + (Math.random() * 0.1 - 0.05);
+                const lng = -74.0060 + (Math.random() * 0.1 - 0.05);
+                
+                row.innerHTML = `
+                    <td>${formatTime(timestamp)}</td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar ${battery > 30 ? 'bg-success' : 'bg-danger'}" 
+                                 role="progressbar" style="width: ${battery}%">
+                                ${battery}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
+                    <td><span class="badge bg-success">OK</span></td>
+                `;
+                
+                telemetryTable.appendChild(row);
+            }
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('droneDetailsModal'));
+            modal.show();
+            
+            // Add event listeners to modal buttons
+            document.getElementById('detailRefreshStatus').addEventListener('click', () => {
+                addSystemLog(`Refreshing status for ${droneId}`);
+                // In a real app, this would request fresh data
+            });
+            
+            document.getElementById('detailRequestTelemetry').addEventListener('click', () => {
+                addSystemLog(`Requesting telemetry from ${droneId}`);
+                // In a real app, this would request telemetry
+            });
+            
+            document.getElementById('detailViewDnaStorage').addEventListener('click', () => {
+                addSystemLog(`Viewing DNA storage for ${droneId}`);
+                // Switch to DNA storage tab and filter by this drone
+                const dnaTab = document.querySelector('[href="#dnaStorage"]');
+                dnaTab.click();
+                document.getElementById('encodeDroneId').value = droneId;
+            });
+            
+            document.getElementById('detailUpdateFirmware').addEventListener('click', () => {
+                addSystemLog(`Initiating firmware update for ${droneId}`);
+                // Switch to drone control tab and pre-fill command
+                const controlTab = document.querySelector('[href="#droneControl"]');
+                controlTab.click();
+                document.getElementById('commandDroneId').value = droneId;
+                document.getElementById('commandType').value = 'update';
+                document.getElementById('commandParams').value = '{"version": "1.2.3", "url": "https://example.com/firmware.bin"}';
+            });
+            
+            document.getElementById('detailDisconnectDrone').addEventListener('click', () => {
+                addSystemLog(`Disconnecting ${droneId}`);
+                // In a real app, this would disconnect the drone
+                modal.hide();
+            });
+        }
+        
+        // Show transaction details modal
+        function showTransactionDetails(txHash) {
+            // In a real app, this would fetch details from the server
+            // For demo, we'll use sample data
+            const tx = {
+                hash: txHash,
+                blockNumber: Math.floor(Math.random() * 1000000) + 12000000,
+                timestamp: new Date(Date.now() - Math.random() * 86400000),
+                status: Math.random() > 0.2 ? 'success' : 'failed',
+                droneId: `DRONE-${1000 + Math.floor(Math.random() * 5)}`,
+                ipfsCid: 'Qm' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+                dnaChecksum: '0x' + Math.random().toString(16).substring(2, 66),
+                verified: Math.random() > 0.3,
+                data: {
+                    type: Math.random() > 0.5 ? 'DNA_STORAGE' : 'COMMAND',
+                    droneId: `DRONE-${1000 + Math.floor(Math.random() * 5)}`,
+                    timestamp: new Date().toISOString(),
+                    details: Math.random() > 0.5 ? {
+                        size: Math.floor(Math.random() * 2000) + 500,
+                        gcContent: Math.random() * 0.2 + 0.4,
+                        sequenceLength: Math.floor(Math.random() * 1500) + 500
+                    } : {
+                        command: ['MOVE', 'SCAN', 'RETURN'][Math.floor(Math.random() * 3)],
+                        parameters: {
+                            x: Math.floor(Math.random() * 100),
+                            y: Math.floor(Math.random() * 100),
+                            z: Math.floor(Math.random() * 50)
+                        }
+                    }
+                }
+            };
+            
+            // Fill modal with data
+            document.getElementById('txHash').textContent = tx.hash;
+            document.getElementById('txBlockNumber').textContent = tx.blockNumber;
+            document.getElementById('txTimestamp').textContent = formatTime(tx.timestamp);
+            document.getElementById('txStatus').textContent = tx.status === 'success' ? 
+                '<span class="badge bg-success">Success</span>' : '<span class="badge bg-danger">Failed</span>';
+            document.getElementById('txDroneId').textContent = tx.droneId;
+            document.getElementById('txIpfsCid').textContent = tx.ipfsCid;
+            document.getElementById('txDnaChecksum').textContent = tx.dnaChecksum;
+            document.getElementById('txVerified').textContent = tx.verified ? 
+                '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-danger">No</span>';
+            document.getElementById('txData').textContent = JSON.stringify(tx.data, null, 2);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('transactionDetailsModal'));
+            modal.show();
+            
+            // Add event listener to view on PolygonScan button
+            document.getElementById('viewOnPolygonScan').addEventListener('click', () => {
+                addSystemLog(`Viewing transaction ${txHash} on PolygonScan`);
+                window.open(`https://polygonscan.com/tx/${txHash}`, '_blank');
+            });
+        }
+        
+        // Add system log entry
+        function addSystemLog(message, type = 'info') {
+            const logsContainer = document.getElementById('systemLogs');
+            const logEntry = document.createElement('div');
+            
+            let iconClass;
+            if (type === 'error') {
+                iconClass = 'bi-exclamation-circle text-danger';
+            } else if (type === 'warning') {
+                iconClass = 'bi-exclamation-triangle text-warning';
+            } else if (type === 'success') {
+                iconClass = 'bi-check-circle text-success';
+            } else {
+                iconClass = 'bi-info-circle text-primary';
+            }
+            
+            logEntry.innerHTML = `
+                <div class="d-flex">
+                    <div class="flex-shrink-0 me-2">
+                        <i class="bi ${iconClass}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <small>${formatTime(new Date())} - ${message}</small>
+                    </div>
+                </div>
+            `;
+            
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        // Generate a sample DNA sequence
+        function generateDnaSequence(length) {
+            const bases = ['A', 'T', 'C', 'G'];
+            let sequence = '';
+            
+            for (let i = 0; i < length; i++) {
+                sequence += bases[Math.floor(Math.random() * 4)];
+            }
+            
+            return sequence;
+        }
+        
+        // Format time for display
+        function formatTime(date) {
+            return date.toLocaleTimeString() + ' ' + date.toLocaleDateString();
+        }
+        
+        // Format duration (seconds) to HH:MM:SS
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            return [hours, minutes, secs]
+                .map(v => v < 10 ? '0' + v : v)
+                .filter((v, i) => v !== '00' || i > 0)
+                .join(':');
+        }
+    </script>
+</body>
+</html>
